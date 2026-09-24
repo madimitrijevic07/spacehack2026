@@ -1,0 +1,91 @@
+import numpy as np
+
+# initial map setup
+KM_PER_PIXEL = 0.5
+MAP_KM = 100
+ARRAY_SIZE = int(MAP_KM / KM_PER_PIXEL)  # 200x200 grid
+
+# empty grid
+map_grid = np.zeros((ARRAY_SIZE, ARRAY_SIZE), dtype=int)
+
+# mock pipeline running diagonally
+for i in range(40, 100):
+    map_grid[i, i] = 1
+    map_grid[i, i + 1] = 1  # 2 pixels wide
+
+
+def run_pipeline_search(full_map, macro_km=10, micro_km=1, km_per_px=0.5):
+    macro_px = int(macro_km / km_per_px)
+    micro_px = int(micro_km / km_per_px)
+
+    total_rows, total_cols = full_map.shape
+
+    macro_scans = 0
+    micro_scans = 0
+    detected_1km_blocks = []
+
+    # visual grid for printing later
+    macro_vis_grid = [
+        [" . " for _ in range(total_cols // macro_px)]
+        for _ in range(total_rows // macro_px)
+    ]
+
+    print("--- STARTING PIPELINE SEARCH ---")
+    print(f"Map size: {MAP_KM}km x {MAP_KM}km")
+    print(f"Total 1km blocks: {MAP_KM * MAP_KM:,}\n")
+
+    # check big sectors first (10km x 10km)
+    for r in range(0, total_rows, macro_px):
+        for c in range(0, total_cols, macro_px):
+            macro_scans += 1
+            macro_slice = full_map[r : r + macro_px, c : c + macro_px]
+
+            macro_r_idx = r // macro_px
+            macro_c_idx = c // macro_px
+
+            # if there's a pipeline here, zoom in
+            if (macro_slice == 1).any():
+                macro_vis_grid[macro_r_idx][macro_c_idx] = " YES"
+
+                # check smaller blocks inside (1km x 1km)
+                for sub_r in range(r, r + macro_px, micro_px):
+                    for sub_c in range(c, c + macro_px, micro_px):
+                        micro_scans += 1
+                        micro_slice = full_map[
+                            sub_r : sub_r + micro_px, sub_c : sub_c + micro_px
+                        ]
+
+                        if (micro_slice == 1).any():
+                            r_km_start = sub_r * km_per_px
+                            c_km_start = sub_c * km_per_px
+                            detected_1km_blocks.append((r_km_start, c_km_start))
+
+    return macro_vis_grid, detected_1km_blocks, macro_scans, micro_scans
+
+
+# run search
+vis_grid, pipeline_1km_blocks, n_macro, n_micro = run_pipeline_search(
+    map_grid, macro_km=10, micro_km=1, km_per_px=KM_PER_PIXEL
+)
+
+
+# display output
+print("Macro Sector Results ('.' = empty, 'YES' = pipe found):")
+print("    " + " ".join([f"C{c}" for c in range(10)]))
+
+for idx, row in enumerate(vis_grid):
+    print(f"R{idx} " + " ".join(row))
+
+
+print("\n" + "=" * 40)
+print("STATS")
+print("=" * 40)
+
+print(f"10km sectors checked: {n_macro}")
+print(f"1km blocks checked:   {n_micro}")
+print(f"1km blocks with pipe: {len(pipeline_1km_blocks)}")
+
+
+print("\nFirst 5 locations found (row km, col km):")
+for loc in pipeline_1km_blocks[:5]:
+    print(f" -> Found at: [{loc[0]}km to {loc[0] + 1}km, {loc[1]}km to {loc[1] + 1}km]")
