@@ -1,5 +1,3 @@
-```python
-
 import numpy as np
 
 # initial map setup
@@ -91,5 +89,3 @@ print(f"1km blocks with pipe: {len(pipeline_1km_blocks)}")
 print("\nFirst 5 locations found (row km, col km):")
 for loc in pipeline_1km_blocks[:5]:
     print(f" -> Found at: [{loc[0]}km to {loc[0] + 1}km, {loc[1]}km to {loc[1] + 1}km]")
-
-```
